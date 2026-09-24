@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Split · Playbook de validação</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">Split Playbook <small>Regras, fluxos e testes</small></div>
+    <nav>
+      <a href="#fluxo">Fluxo</a><a href="#tags">Tags</a><a href="#testes">Testes</a>
+      <a href="#categorias">Categorias</a><a href="#auditoria">Auditoria</a><a href="#fontes">Fontes</a>
+    </nav>
+    <p>Checklist salvo neste navegador.</p>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <span class="eyebrow">IMC-1005 + IMC-1754</span>
+      <h1>Validação completa do Split</h1>
+      <p>Um mapa visual para executar o fluxo, entender cada tag e auditar o que foi programado no ERP contra o realizado no PJBank.</p>
+      <div class="stats"><span><b id="testCount">0</b> smokes</span><span><b>12</b> categorias</span><span><b>3</b> resultados</span><span><b>4</b> campos validados</span></div>
+    </header>
+
+    <section id="fluxo">
+      <div class="heading"><div><h2>Visão do fluxo</h2><p>Da geração do boleto até a decisão final.</p></div></div>
+      <div class="card flow">
+        <div><b>01 · ERP</b><span>Gera o boleto e programa o Split</span></div>
+        <i>›</i><div><b>02 · PJBank</b><span>Cadastra e liquida</span></div>
+        <i>›</i><div><b>03 · Webhook</b><span>boleto_liquidado + Dados_split</span></div>
+        <i>›</i><div><b>04 · Conferência</b><span>Programado × realizado</span></div>
+        <i>›</i><div><b>05 · Estado final</b><span>Tag, repasse, banco e log</span></div>
+      </div>
+      <div class="outcomes">
+        <article class="success"><b>Coincidente</b><span>Continua o fluxo normal.</span></article>
+        <article class="danger"><b>Divergente</b><span>Registra erro e libera repasse manual.</span></article>
+        <article class="warning"><b>Inconclusivo</b><span>Registra auditoria e não bloqueia.</span></article>
+      </div>
+    </section>
+
+    <section id="tags">
+      <div class="heading"><div><h2>Como decidir a tag</h2><p>Uma linha em SPLIT_ERROS, sozinha, não define o estado atual.</p></div></div>
+      <div class="tag-grid" id="tagGrid"></div>
+      <div class="notice"><b>Precedência crítica:</b> erro tipo 2 pode aparecer depois da liquidação; erro antigo tipo 1 não deve encobrir um Split concluído; tipo 3 é indisponibilidade.</div>
+    </section>
+
+    <section id="testes">
+      <div class="heading tools">
+        <div><h2>Smoke test obrigatório</h2><p>Abra somente o cenário em execução e marque ao concluir.</p></div>
+        <div class="filters"><input id="search" type="search" placeholder="Buscar cenário ou resultado"><select id="group"><option value="">Todos os grupos</option></select><button id="reset">Limpar</button></div>
+      </div>
+      <div class="progress"><span id="progressBar"></span></div><p class="progress-text" id="progressText"></p>
+      <div class="tests" id="testList"></div>
+    </section>
+
+    <section id="categorias">
+      <div class="heading"><div><h2>Matriz de classificação</h2><p>Categoria, tipo, tag e mensagem precisam concordar.</p></div></div>
+      <div class="card table-wrap"><table><thead><tr><th>Categoria</th><th>Tipo</th><th>Tag</th><th>Banner esperado</th></tr></thead><tbody id="categoryRows"></tbody></table></div>
+    </section>
+
+    <section id="auditoria">
+      <div class="heading"><div><h2>Auditoria</h2><p>Banco, interface e logs devem contar a mesma história.</p></div></div>
+      <div class="audit-grid">
+        <article class="card"><h3>Comparação do IMC-1754</h3><ul><li>CPF/CNPJ</li><li>Banco</li><li>Agência</li><li>Conta</li></ul><div class="notice"><b>Valor:</b> aparece no log, mas não reprova esta conferência.</div></article>
+        <article class="card"><h3>O log deve responder</h3><ul><li>Qual licença, cobrança e repasse?</li><li>O que foi programado e executado?</li><li>Quais campos divergiram?</li><li>Qual resultado e motivo?</li><li>O repasse manual foi liberado?</li></ul></article>
+      </div>
+      <article class="card code-card"><h3>Grafana por licença e cobrança</h3><button class="copy">Copiar</button><pre>{application="imobiliaria"}
+|= "\"licenca\":\"LICENCA\""
+|= "\"ID_RECEBIMENTO_RECB\":\"ID_RECEBIMENTO\""
+|= "\"evento\":\"conferencia_split_liquidado\""
+| json</pre></article>
+      <article class="card code-card"><h3>SQL mínimo</h3><button class="copy">Copiar</button><pre>SELECT ID_RECEBIMENTO_RECB, FL_STATUS_RECB, ID_SPLIT_RECB
+FROM RECEBIMENTO WHERE ID_RECEBIMENTO_RECB = :id;
+
+SELECT ID_SPLIT_SPL, ID_REPASSE_REP, FL_STATUS_SPL, VL_SPLIT_SPL
+FROM SPLIT WHERE ID_RECEBIMENTO_RECB = :id;
+
+SELECT ID_SPLITERRO_SPE, FL_TIPOERRO_SPE, ST_CATEGORIA_SPE,
+       ST_DESCERRO_SPE, DT_ERRO_SPE
+FROM SPLIT_ERROS
+WHERE ID_RECEBIMENTO_RECB = :id
+ORDER BY ID_SPLITERRO_SPE DESC;</pre></article>
+    </section>
+
+    <section id="fontes"><div class="heading"><div><h2>Fontes e decisões</h2><p>Cards, documentos, protótipos e implementações.</p></div></div><div class="card links" id="links"></div></section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
